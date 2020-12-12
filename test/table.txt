@@ -1,0 +1,1 @@
+seqid	tsd1_len	tsd1	tsd2_len	tsd2	tsdref_len	tsdref	ins_len	insertion	score

@@ -3,8 +3,14 @@ import os
 import sys
 import pysam
 import argparse
+from Bio import SeqIO
+from difflib import SequenceMatcher
 
-from dp.aligner import read_seq_to_aligned_pairs
+from .dp.aligner import read_seq_to_aligned_pairs
+from .io.RepeatMaskerIO import parseRepeatMasker
+
+def similar(a, b):
+    return SequenceMatcher(None, a, b).ratio()
 
 def non_emptyfile(checkfile):
     return os.path.isfile(checkfile) and os.path.getsize(checkfile) > 0
@@ -62,6 +68,10 @@ def extract_sequence(bam,regions,reffn):
                     qend = qpos
                 elif rpos is not None and rpos >= end and qpos is not None:
                     pass
+            if qstart == None:
+                continue
+            if qend == None:
+                continue
             assert qstart is not None
             assert qend is not None
             qseq = read.query_sequence[qstart:qend]
@@ -73,12 +83,16 @@ def extract_sequence(bam,regions,reffn):
     return (query,ref)
 
 def run_repeatmasker(ins_fasta,outdir):
-    command = "RepeatMasker -e rmblast -species human %s -dir %s" % (ins_fasta,outdir)
+    args = [ins_fasta,outdir]
+    command = ("CONDA_BASE=$(conda info --base) \n"
+               "source ${CONDA_BASE}/etc/profile.d/conda.sh \n"
+               "conda activate repeatmasker \n"
+               "RepeatMasker -e rmblast -species human %s -dir %s" % tuple(args))
     os.system(command)
 
 def valid_tsds(table):
     tsds = {}
-    with open(table,'w') as fh:
+    with open(table,'r') as fh:
         for line in fh:
             sl = line.strip().split()
             seqid = sl[0]
@@ -100,14 +114,18 @@ def get_mei(outdir,ins_fasta,table):
     meifn = "%s/mei.txt" % outdir
     repeatmasker_output = "%s.out" % ins_fasta
     seqs = ins_seqs(ins_fasta)
-    tsds = valid_tsds(table)    
+    tsds = valid_tsds(table)
     rmes = parseRepeatMasker(repeatmasker_output,seqs)
-    with open(meifn,'w') as fh: 
+    header = ["#ins_id","ins_start","ins_end","ins_length",
+              "repeat","repeat_start","repeat_end","repeat_length",
+              "strand","repeat_class/family","ins_seq"]
+    with open(meifn,'w') as fh:
+        fh.write("%s\n" % "\t".join(header))
         for rme in rmes:
             if rme.maybeMEI() is True:
                 name = rme.query_id
                 if (name in seqs) and (name in tsds):
-                    fh.write(rme)
+                    fh.write("%s\n" % str(rme))
     
 def run(args):
     regions = read_regions(args.regions,args.flank)
@@ -116,9 +134,8 @@ def run(args):
         "table": "%s/table.txt" % args.outdir,
         "ins_fasta": "%s/ins.fasta" % args.outdir
     }
-    for fmt in alg_output:
-        read_seq_to_aligned_pairs(query,ref,args.k,fmt,alg_output[fmt])
-    run_repeatmasker(alg_output["ins_fasta"])
+    read_seq_to_aligned_pairs(query,ref,args.k,alg_output["table"],alg_output["ins_fasta"])
+    run_repeatmasker(alg_output["ins_fasta"],args.outdir)
     get_mei(args.outdir,alg_output["ins_fasta"],alg_output["table"])
     
 def main():

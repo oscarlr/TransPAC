@@ -39,20 +39,20 @@ class AlignmentFinder(object):
                 return self._traceback()
 
         def _compute_array(self):
-                for i in xrange(self.seq1.size+1):
+                for i in range(self.seq1.size+1):
                         self.D[i,0] = i*indel
-                for j in xrange(self.seq2.size+1):
+                for j in range(self.seq2.size+1):
                         self.D[0,j] = j*indel
-                for i in xrange(1, self.seq1.size+1):
-                        for j in xrange(1, self.seq2.size+1):
+                for i in range(1, self.seq1.size+1):
+                        for j in range(1, self.seq2.size+1):
                                 self.D[i,j] = max(  self.D[i-1, j-1] + self._get_score(i, j),
                                                     self.D[i-1, j] + indel,self.D[i, j-1] + indel)
 
         def compute_array(self):
                 D = np.zeros((self.seq1.size+1, self.seq2.size+1), dtype=np.int_)
-                for i in xrange(self.seq1.size+1):
+                for i in range(self.seq1.size+1):
                         D[i,0] = i*indel
-                for j in xrange(self.seq2.size+1):
+                for j in range(self.seq2.size+1):
                         D[0,j] = j*indel
                         aligner_opts.compute_array_2dloop(D, scoring, self.seq1.size, self.seq2.size, indel, self.seq1, self.seq2)
                 return D
@@ -64,12 +64,12 @@ class AlignmentFinder(object):
                 D = np.zeros((self.seq1.size+1, self.seq2.size+1), dtype=np.int_)
                 Dpointer = np.zeros((self.seq1.size+1, self.seq2.size+1), dtype=np.int_)
                 # alternative would be Dpointer = {}
-                for i in xrange(self.seq1.size+1):
+                for i in range(self.seq1.size+1):
                         D[i,0] = i*indel
-                for j in xrange(self.seq2.size+1):
+                for j in range(self.seq2.size+1):
                         D[0,j] = j*indel
-                for i in xrange(1, self.seq1.size+1):
-                        for j in xrange(1, self.seq2.size+1):
+                for i in range(1, self.seq1.size+1):
+                        for j in range(1, self.seq2.size+1):
                                 D[i,j] = max(  D[i-1, j-1] + self._get_score(i, j),
                                                D[i-1, j] + indel,D[i, j-1] + indel)
                                 Dpointer[i,j] = np.argmax(  [D[i-1, j-1] + self._get_score(i, j),
@@ -133,18 +133,18 @@ class AlignmentFinder(object):
                 Pmax[0,0] = P[0,0]
                 S[0,0]    = neginf
                 T[0,0]    = neginf  # we might want to change this to negative infinity
-                for j in xrange(1, self.seq2.size+1):
+                for j in range(1, self.seq2.size+1):
                         Pmax[0,j] = P[0,j]
                         T[0,j]    = neginf
                         S[0,j]    = neginf
-                for i in xrange(1, self.seq1.size+1):
+                for i in range(1, self.seq1.size+1):
                         Pmax[i,0] = max(P[i,0], Pmax[i-1,0])
                         # find maximum value in previous Pmax row within k
                         T[i,0]    = neginf
                         S[i,0]    = neginf
                 '''
-              for i in xrange(1, self.seq1.size+1):
-                      for j in xrange(1, self.seq2.size+1):
+              for i in range(1, self.seq1.size+1):
+                      for j in range(1, self.seq2.size+1):
                               Pmax[i,j] = max(P[i,j], Pmax[i-1,j])
                               score_ij  = self._get_score(i,j)
                               # for T find maximum value in previous Pmax row within k				
@@ -308,7 +308,7 @@ def get_seq_from_pairs (pairs, ind=0):
         return "".join(filter(lambda x: x != "_", query_list))
 
 
-def read_seq_to_aligned_pairs (fseq, cseq, k, fmt, outputfn, insertion_size=10000):
+def read_seq_to_aligned_pairs (fseq, cseq, k, table_fmt, ins_fmt, insertion_size=10000):
         # read_seq_to_aligned_pairs(query,ref,args.k,fmt,alg_output[fmt])
         # full = SeqIO.parse(open(fn1),"fasta")
         # combine = SeqIO.parse(open(fn2),"fasta")
@@ -320,22 +320,22 @@ def read_seq_to_aligned_pairs (fseq, cseq, k, fmt, outputfn, insertion_size=1000
         # for c in combine:
         # 	cseq[c.id] = str(c.seq)
 
-        outputfh = open(outputfn,'w')
+        ins_outputfh = open(ins_fmt,'w')
+        table_outputfh = open(table_fmt,'w')
 
-        if fmt == 'table': # output the header for the table format
-                outputfh.write("seqid\ttsd1_len\ttsd1\ttsd2_len\ttsd2\ttsdref_len\ttsdref\tins_len\tinsertion\tscore")
+        table_outputfh.write("seqid\ttsd1_len\ttsd1\ttsd2_len\ttsd2\ttsdref_len\ttsdref\tins_len\tinsertion\tscore\n")
 
         for seqid in fseq:
-                #print(>>sys.stderr, "running %s ..." %(seqid))
+                print("running %s. LEN=%s ..." % (seqid,len(fseq[seqid])),file=sys.stdout)
                 fnucs = fseq[seqid].upper()
                 cnucs = cseq[seqid].upper()
                 if "N" in fnucs or "N" in cnucs:
                         #print(>>sys.stderr, "...'N' found so ignoring %s" %(seqid))
                         continue
-                nucls_num = map(lambda x: nucls2num[x],fnucs)
-                print(nucls_num)
+                nucls_num = list(map(lambda x: nucls2num[x],fnucs))
+                #print(nucls_num)
                 insertion = array(nucls_num, dtype=np.int16)
-                ref = array(map(lambda x: nucls2num[x], cnucs), dtype=np.int16)
+                ref = array(list(map(lambda x: nucls2num[x], cnucs)), dtype=np.int16)
                 if len(insertion) > insertion_size:
                         continue
                 aligner_test = AlignmentFinder(insertion, ref)
@@ -354,30 +354,32 @@ def read_seq_to_aligned_pairs (fseq, cseq, k, fmt, outputfn, insertion_size=1000
                 ins_seq = get_seq_from_pairs (sub_pairs_list)
                 ins_len = len(ins_seq)
 
-                if fmt == 'ins_fasta': # output the fasta for inserted sequences
-                        if len(ins_seq) > 0:
-                                outputfh.write(">%s\n%s" %(seqid, ins_seq))
-                elif fmt == 'table': # output the fasta for inserted sequences
-                        t1s, t1e = -1,-1
-                        t2s, t2e = -1,-1
-                        for i in range(len(features_test)):
-                                if features_test[i] == "T": # check where T is
-                                        if t1s == -1: # if you haven't set the first TSD - set
-                                                t1s,t1e = i,i+1 
-                                        elif t2s == -1: # if you haven't set the second
-                                                if t1e == i: # check if you're still in the first
-                                                        t1e = i+1
-                                                else: # otherwise set the second
-                                                        t2s,t2e = i,i+1
-                                        else: # otherwise you are in the second already
-                                                t2e = i+1
-                        tsd1 = get_seq_from_pairs (pairs_test[t1s:t1e])
-                        tsd1_len = len(tsd1)
-                        tsd2 = get_seq_from_pairs (pairs_test[t1s:t1e])
-                        tsd2_len = len(tsd2)
-                        tsdref = get_seq_from_pairs (pairs_test[t1s:t1e], 1)
-                        tsdref_len = len(tsdref)
-                        outputfh.write("\t".join(map(str, [seqid,tsd1_len, tsd1, tsd2_len, tsd2,tsdref_len, tsdref,ins_len, ins_seq, S[-1][-1]])))
+                if len(ins_seq) > 0:
+                        ins_outputfh.write(">%s\n%s\n" %(seqid, ins_seq))
+                        
+                t1s, t1e = -1,-1
+                t2s, t2e = -1,-1
+                for i in range(len(features_test)):
+                        if features_test[i] == "T": # check where T is
+                                if t1s == -1: # if you haven't set the first TSD - set
+                                        t1s,t1e = i,i+1 
+                                elif t2s == -1: # if you haven't set the second
+                                        if t1e == i: # check if you're still in the first
+                                                t1e = i+1
+                                        else: # otherwise set the second
+                                                t2s,t2e = i,i+1
+                                else: # otherwise you are in the second already
+                                        t2e = i+1
+                tsd1 = get_seq_from_pairs (pairs_test[t1s:t1e])
+                tsd1_len = len(tsd1)
+                tsd2 = get_seq_from_pairs (pairs_test[t1s:t1e])
+                tsd2_len = len(tsd2)
+                tsdref = get_seq_from_pairs (pairs_test[t1s:t1e], 1)
+                tsdref_len = len(tsdref)
+                table_outputfh.write("%s\n" % "\t".join(map(str, [seqid,tsd1_len, tsd1, tsd2_len, tsd2,tsdref_len, tsdref,ins_len, ins_seq, S[-1][-1]])))
+
+        ins_outputfh.close()
+        table_outputfh.close()
                 # else:
                 # 	print(len(insertion)
                 # 	print(len(ref)
